@@ -1,0 +1,657 @@
+<!--
+This page calls a single bidder for a single ad slot. It can be considered a "hello world" example for using
+Prebid with the Google Publisher Tag.
+It also makes a good test page for new adapter PR submissions. Simply set your server's Bid Params object in the
+bids array inside the adUnits, and it will use your adapter to load an ad.
+NOTE that many ad servers won't send back an ad if the URL is localhost... so you might need to
+set an alias in your /etc/hosts file so that you can load this page from a different domain.
+-->
+
+<html>
+
+<head>
+    <script async src="./prebid-build/prebid.min.js"></script>
+    <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+    <script async src="./programmaticStretch.js"></script>
+    <script>
+        window.programmaticStretch = {
+            enabled: false,
+        };
+    </script>
+    <script>
+        // var FAILSAFE_TIMEOUT = 3300;
+        var PREBID_TIMEOUT = 1000;
+        
+        var originalResizeFunction = function (adId, bidResponse) {
+            console.log('Custom resize:', adId, bidResponse.adUnitCode, bidResponse.width, bidResponse.height);
+            // Implement custom resize logic here
+        };
+        
+        var adUnits = [
+        {
+            code: "div-gpt-ad-1460505748561-0",
+            mediaTypes: {
+                banner: {
+                    sizes: [[300, 250]]
+                },
+            },
+            
+            // Replace this object to test a new Adapter!
+            bids: [
+            {
+                bidder: "responsiveads",
+                params: {
+                    adId: "2234234",
+                },
+            },
+            ],
+        },
+        ];
+        
+        var pbjs = pbjs || {};
+        pbjs.que = pbjs.que || [];
+    </script>
+    
+    <script>
+        var googletag = googletag || {};
+        googletag.cmd = googletag.cmd || [];
+        googletag.cmd.push(function () {
+            googletag.pubads().disableInitialLoad();
+        });
+        
+        pbjs.que.push(function () {
+            pbjs.addAdUnits(adUnits);
+            
+            pbjs.requestBids({
+                bidsBackHandler: sendAdserverRequest,
+                timeout: PREBID_TIMEOUT,
+            });
+        });
+        
+        function sendAdserverRequest() {
+            if (pbjs.adserverRequestSent) return;
+            pbjs.adserverRequestSent = true;
+            googletag.cmd.push(function () {
+                if (pbjs.libLoaded) {
+                    pbjs.que.push(function () {
+                        pbjs.setTargetingForGPTAsync();
+                        googletag.pubads().refresh();
+                    });
+                } else {
+                    googletag.pubads().refresh();
+                }
+            });
+        }
+        
+        // setTimeout(function () {
+        //     sendAdserverRequest();
+        // }, FAILSAFE_TIMEOUT);
+    </script>
+    
+    <script>
+        // Shared config for debug panel
+        var debugConfig = {
+            forceSafeFrame: true
+        };
+        
+        googletag.cmd.push(function () {
+            window.slot1 = googletag
+            .defineSlot(
+            "/19968336/header-bid-tag-0",
+            [
+            [300, 250],
+            [300, 600],
+            ],
+            "div-gpt-ad-1460505748561-0",
+            )
+            .addService(googletag.pubads());
+            window.slot1.setConfig({ safeFrame: { forceSafeFrame: debugConfig.forceSafeFrame } });
+            
+            googletag.pubads().enableSingleRequest();
+            googletag.enableServices();
+        });
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            line-height: 1.7;
+            color: #2d3436;
+            background: #f8f9fa;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a3e 50%, #2d2d5e 100%);
+            color: white;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        header .badge {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+        
+        nav {
+            background: #16213e;
+            padding: 0 24px;
+            display: flex;
+            gap: 0;
+            border-bottom: 3px solid #6c5ce7;
+        }
+        
+        nav a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 12px 16px;
+            transition: color 0.2s, background 0.2s;
+        }
+        
+        nav a:hover {
+            color: #fff;
+            background: rgba(108, 92, 231, 0.2);
+        }
+        
+        .masthead-ad {
+            background: #fff;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 36px;
+        }
+        
+        main {
+            flex: 2;
+            min-width: 300px;
+        }
+        
+        aside {
+            flex: 1;
+            min-width: 280px;
+            max-width: 350px;
+        }
+        
+        .featured {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #6c5ce7;
+            padding-bottom: 24px;
+        }
+        
+        .featured h2 {
+            font-size: 26px;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .featured p {
+            color: #555;
+        }
+        
+        .featured .meta {
+            font-size: 12px;
+            color: #6c5ce7;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .article {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        
+        .article h3 {
+            font-size: 17px;
+            margin-bottom: 6px;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        
+        .article h3:hover {
+            color: #6c5ce7;
+        }
+        
+        .article .meta {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        
+        .article p {
+            font-size: 14px;
+            color: #636e72;
+        }
+        
+        .sidebar-section {
+            background: #fff;
+            padding: 18px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        
+        .sidebar-section h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #6c5ce7;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            color: #1a1a2e;
+        }
+        
+        .sidebar-section ul {
+            list-style: none;
+        }
+        
+        .sidebar-section li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .sidebar-section li:last-child {
+            border-bottom: none;
+        }
+        
+        .ad-container {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .ad-label {
+            font-size: 10px;
+            color: #aaa;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+        
+        .incontent-ad {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        footer {
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a3e 100%);
+            color: #888;
+            padding: 24px;
+            text-align: center;
+            font-size: 12px;
+            margin-top: 40px;
+        }
+        
+        /* Debug Panel Styles */
+        .debug-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a2e;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(108, 92, 231, 0.2);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px;
+            z-index: 9999;
+            min-width: 280px;
+        }
+        
+        .debug-panel h5 {
+            margin: 0 0 12px 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+        
+        .debug-panel .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .debug-panel .setting-label {
+            font-size: 13px;
+        }
+        
+        .debug-panel .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .debug-panel .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .debug-panel .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+        
+        .debug-panel .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        
+        .debug-panel .toggle-switch input:checked+.toggle-slider {
+            background-color: #6c5ce7;
+        }
+        
+        .debug-panel .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(24px);
+        }
+        
+        .debug-panel .status {
+            font-size: 11px;
+            color: #888;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+        
+        .debug-panel .refresh-btn {
+            margin-top: 12px;
+            width: 100%;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        
+        .debug-panel .refresh-btn:hover {
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>ResponsiveAds</h1>
+        <span class="badge">programmatic-stretch</span>
+    </header>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">World</a>
+        <a href="#">Politics</a>
+        <a href="#">Business</a>
+        <a href="#">Technology</a>
+        <a href="#">Sports</a>
+        <a href="#">Opinion</a>
+    </nav>
+    
+    <!-- Masthead Ad -->
+    <div class="masthead-ad">
+        <div class="ad-label">Advertisement</div>
+        <div id="div-gpt-ad-1460505748561-0">
+            <script type="text/javascript">
+                googletag.cmd.push(function () {
+                    googletag.display("div-gpt-ad-1460505748561-0");
+                });
+            </script>
+        </div>
+    </div>
+    
+    <div class="container">
+        <main>
+            <article class="featured">
+                <h2>Global Leaders Gather for Climate Summit in Geneva</h2>
+                <p class="meta">By Sarah Mitchell | December 2, 2025 | 5 min read</p>
+                <p>World leaders from over 150 countries have convened in Geneva this week for what many are calling the
+                    most significant climate summit in a decade. The conference aims to establish new binding targets
+                    for carbon emissions and accelerate the transition to renewable energy sources. Early discussions
+                    have shown promising signs of cooperation between traditionally opposing nations.</p>
+                </article>
+                
+                <article class="article">
+                    <h3>Tech Giants Report Record Quarterly Earnings</h3>
+                    <p class="meta">By James Chen | December 2, 2025</p>
+                    <p>Major technology companies have announced their strongest quarterly performance in years, driven
+                        largely by advancements in artificial intelligence and cloud computing services. Analysts predict
+                        continued growth through 2026.</p>
+                    </article>
+                    
+                    <article class="article">
+                        <h3>New Study Reveals Benefits of Urban Green Spaces</h3>
+                        <p class="meta">By Dr. Emily Roberts | December 1, 2025</p>
+                        <p>Researchers at Stanford University have published findings showing that access to urban parks and
+                            green spaces significantly improves mental health outcomes for city residents. The study followed
+                            10,000 participants over five years.</p>
+                        </article>
+                        
+                        <article class="article">
+                            <h3>Championship Finals Draw Record Television Audience</h3>
+                            <p class="meta">By Mike Thompson | December 1, 2025</p>
+                            <p>Last night's championship game attracted the largest television audience in the sport's history, with
+                                an estimated 45 million viewers tuning in to watch the dramatic overtime finish.</p>
+                            </article>
+                            
+                            <article class="article">
+                                <h3>Local Restaurant Scene Sees Renaissance After Pandemic</h3>
+                                <p class="meta">By Lisa Park | November 30, 2025</p>
+                                <p>Small restaurants and cafes are experiencing a remarkable comeback, with new establishments opening
+                                    at twice the pre-pandemic rate. Food critics attribute the boom to changing consumer preferences for
+                                    unique dining experiences.</p>
+                                </article>
+                            </main>
+                            
+                            <aside>
+                                <div class="sidebar-section">
+                                    <h4>Trending Now</h4>
+                                    <ul>
+                                        <li>Climate Summit Day 2: Key Takeaways</li>
+                                        <li>Stock Markets Hit New Highs</li>
+                                        <li>Winter Storm Expected This Weekend</li>
+                                        <li>New Smartphone Released Today</li>
+                                        <li>Celebrity Chef Opens New Restaurant</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="sidebar-section">
+                                    <h4>Most Read</h4>
+                                    <ul>
+                                        <li>How AI is Changing Education</li>
+                                        <li>Travel Guide: Best Winter Destinations</li>
+                                        <li>Opinion: The Future of Remote Work</li>
+                                        <li>Recipe: Perfect Holiday Cookies</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="sidebar-section">
+                                    <h4>Weather</h4>
+                                    <p style="font-size: 14px; padding: 10px 0;">
+                                        <strong>Today:</strong> Partly Cloudy, 45°F<br>
+                                        <strong>Tomorrow:</strong> Sunny, 48°F<br>
+                                        <strong>Wednesday:</strong> Rain, 42°F
+                                    </p>
+                                </div>
+                            </aside>
+                        </div>
+                        
+                        <footer>
+                            <p>&copy; 2025 The Daily Tribune. All rights reserved. | Privacy Policy | Terms of Service | Contact Us</p>
+                        </footer>
+                        
+                        <!-- Debug Panel -->
+                        <div class="debug-panel" id="debug-panel">
+                            <h5>Debug Settings</h5>
+                            <div class="setting-row">
+                                <span class="setting-label">enableProgrammaticStretch</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-stretch" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <span class="setting-label">forceSafeFrame</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-safeframe" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row">
+                                <span class="setting-label">resizeFunction</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-resize-func" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="status" id="debug-status">
+                                Stretch: <span id="stretch-status">Enabled</span> | SafeFrame: <span id="safeframe-status">Enabled</span> |
+                                ResizeFunc: <span id="resize-func-status">Enabled</span>
+                            </div>
+                            <button class="refresh-btn" id="refresh-ads-btn">Refresh Ads</button>
+                        </div>
+                        
+                        <script>
+                            // Debug Panel Logic
+                            (function () {
+                                var toggleStretch = document.getElementById('toggle-stretch');
+                                var toggleSafeframe = document.getElementById('toggle-safeframe');
+                                var toggleResizeFunc = document.getElementById('toggle-resize-func');
+                                var stretchStatus = document.getElementById('stretch-status');
+                                var safeframeStatus = document.getElementById('safeframe-status');
+                                var resizeFuncStatus = document.getElementById('resize-func-status');
+                                var refreshBtn = document.getElementById('refresh-ads-btn');
+                                
+                                // Initialize from current adUnits state
+                                var currentStretchState = window.programmaticStretch && window.programmaticStretch.enabled;
+                                toggleStretch.checked = !!currentStretchState;
+                                stretchStatus.textContent = currentStretchState ? 'Enabled' : 'Disabled';
+                                
+                                // Initialize SafeFrame toggle from shared config
+                                toggleSafeframe.checked = !!debugConfig.forceSafeFrame;
+                                safeframeStatus.textContent = debugConfig.forceSafeFrame ? 'Enabled' : 'Disabled';
+                                
+                                // Initialize resizeFunction toggle
+                                var hasResizeFunc = !!adUnits[0].mediaTypes.banner.resizeFunction;
+                                toggleResizeFunc.checked = hasResizeFunc;
+                                resizeFuncStatus.textContent = hasResizeFunc ? 'Enabled' : 'Disabled';
+                                
+                                toggleStretch.addEventListener('change', function () {
+                                    var enabled = this.checked;
+                                    if (!window.programmaticStretch) {
+                                        window.programmaticStretch = {};
+                                    }
+                                    window.programmaticStretch.enabled = enabled;
+                                    stretchStatus.textContent = enabled ? 'Enabled' : 'Disabled';
+                                    console.log('[Debug Panel] enableProgrammaticStretch set to:', enabled);
+                                });
+                                
+                                toggleSafeframe.addEventListener('change', function () {
+                                    debugConfig.forceSafeFrame = this.checked;
+                                    safeframeStatus.textContent = this.checked ? 'Enabled' : 'Disabled';
+                                    console.log('[Debug Panel] forceSafeFrame set to:', debugConfig.forceSafeFrame);
+                                });
+                                
+                                toggleResizeFunc.addEventListener('change', function () {
+                                    var enabled = this.checked;
+                                    if (enabled) {
+                                        adUnits[0].mediaTypes.banner.resizeFunction = originalResizeFunction;
+                                    } else {
+                                        delete adUnits[0].mediaTypes.banner.resizeFunction;
+                                    }
+                                    resizeFuncStatus.textContent = enabled ? 'Enabled' : 'Disabled';
+                                    console.log('[Debug Panel] resizeFunction set to:', enabled ? 'custom function' : 'disabled');
+                                });
+                                
+                                refreshBtn.addEventListener('click', function () {
+                                    console.log('[Debug Panel] Refreshing ads with enableProgrammaticStretch:',
+                                    adUnits[0].mediaTypes.banner.enableProgrammaticStretch,
+                                    'forceSafeFrame:', debugConfig.forceSafeFrame);
+                                    
+                                    // Update slot SafeFrame config
+                                    googletag.cmd.push(function () {
+                                        window.slot1.setConfig({ safeFrame: { forceSafeFrame: debugConfig.forceSafeFrame } });
+                                    });
+                                    
+                                    // Reset the adserver request flag
+                                    pbjs.adserverRequestSent = false;
+                                    
+                                    // Remove existing ad units and re-add with new config
+                                    pbjs.que.push(function () {
+                                        pbjs.removeAdUnit('div-gpt-ad-1460505748561-0');
+                                        pbjs.addAdUnits(adUnits);
+                                        
+                                        pbjs.requestBids({
+                                            bidsBackHandler: function () {
+                                                googletag.cmd.push(function () {
+                                                    pbjs.que.push(function () {
+                                                        pbjs.setTargetingForGPTAsync();
+                                                        googletag.pubads().refresh([window.slot1]);
+                                                    });
+                                                });
+                                            },
+                                            timeout: PREBID_TIMEOUT,
+                                        });
+                                    });
+                                });
+                            })();
+                        </script>
+                    </body>
+                    
+                    </html>
