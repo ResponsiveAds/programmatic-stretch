@@ -2,6 +2,12 @@
 
 Replicates the Prebid.js `enableProgrammaticStretch` behaviour as a dependency-free, drop-in script that publishers can add to any page.
 
+
+
+https://github.com/user-attachments/assets/8b6c58a2-10f4-48c8-8b8b-2bc935bf1b34
+
+
+
 The script listens for `postMessage` events sent by creatives rendered inside iframes. When a message with `action: "programmaticStretch"` is received, the ad slot (iframe + its parent container) is resized to full-width while keeping a fixed height — exactly matching the Prebid.js implementation.
 
 ## Message Format
