@@ -10,6 +10,16 @@ https://github.com/user-attachments/assets/8b6c58a2-10f4-48c8-8b8b-2bc935bf1b34
 
 The script listens for `postMessage` events sent by creatives rendered inside iframes. When a message with `action: "programmaticStretch"` is received, the ad slot (iframe + its parent container) is resized to full-width while keeping a fixed height — exactly matching the Prebid.js implementation.
 
+## Local Development
+
+Start a local server to test the example page:
+
+```bash
+npm run serve
+```
+
+Then open [http://localhost:3000/example.html](http://localhost:3000/example.html) in your browser.
+
 ## Message Format
 
 The creative inside the iframe sends a `postMessage` with the following structure:
