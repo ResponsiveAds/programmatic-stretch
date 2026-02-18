@@ -88,9 +88,7 @@
     return null;
   }
 
-  /**
-   * Look up an iframe via AppNexus AST tag (window.apntag).
-   */
+
   function findIframeByApnTag(adUnitCode) {
     if (!adUnitCode) return null;
     try {

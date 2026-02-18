@@ -99,13 +99,33 @@ Height is resolved with the following priority:
 2. Height sent in the `postMessage` payload (`data.height`)
 3. The iframe's computed height (via `getComputedStyle`)
 
+## Triggering the Expansion from a Creative Iframe
+
+Add the following snippet inside your creative to trigger the stretch:
+
+```js
+const adId =
+  window?.parent?.ucTagData?.targetingMap?.hb_adid[0] || 'fooId';
+
+const message = {
+  message: 'Prebid Creative',
+  adId: adId,
+  action: 'programmaticStretch',
+};
+
+const stringMessage = JSON.stringify(message);
+window.top.postMessage(stringMessage, '*');
+```
+
+The code reads the Prebid ad ID from the `ucTagData` object (falling back to a placeholder) and posts the required `programmaticStretch` message to the top window, which the publisher-side script picks up to resize the slot.
+
 ## Iframe Lookup Strategies
 
 The script locates the ad iframe using multiple strategies in order:
 
 1. **`event.source` matching** — compares against every iframe's `contentWindow`
 2. **GPT slot lookup** — searches Google Publisher Tag targeting for the `adId`
-3. **AppNexus AST lookup** — queries `window.apntag` by `adUnitCode`
+3. ** AST lookup** — queries `window.apntag` by `adUnitCode`
 4. **Direct DOM lookup** — uses `adUnitCode` as a DOM element id
 
 ## Default Resize Behaviour
