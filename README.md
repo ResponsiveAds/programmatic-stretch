@@ -135,7 +135,7 @@ The script locates the ad iframe using multiple strategies in order:
 
 1. **`event.source` matching** — compares against every iframe's `contentWindow`
 2. **GPT slot lookup** — searches Google Publisher Tag targeting for the `adId`
-3. ** AST lookup** — queries `window.apntag` by `adUnitCode`
+3. **AST lookup** — queries `window.apntag` by `adUnitCode`
 4. **Direct DOM lookup** — uses `adUnitCode` as a DOM element id
 
 ## Default Resize Behaviour
