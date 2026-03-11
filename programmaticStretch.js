@@ -200,28 +200,51 @@
   }
 
   /**
-   * Check whether an element is a flex/grid child with visible siblings,
-   * meaning it's part of a multi-column layout that should not be broken.
+   * Check whether an element (or any of its ancestors) is a flex/grid child
+   * with visible siblings, meaning it sits inside a multi-column layout that
+   * should not be broken out of.
    */
   function isMultiColumnChild(el) {
-    var parent = el.parentElement;
-    if (!parent) return false;
-    var parentDisplay = window.getComputedStyle(parent).display;
-    if (parentDisplay.indexOf('flex') === -1 && parentDisplay.indexOf('grid') === -1) {
-      return false;
-    }
-    // Count visible siblings (elements that contribute to the layout)
-    var siblings = parent.children;
-    var visibleCount = 0;
-    for (var i = 0; i < siblings.length; i++) {
-      var s = siblings[i];
-      if (s.nodeType === 1) {
-        var sDisplay = window.getComputedStyle(s).display;
-        if (sDisplay !== 'none') visibleCount++;
+    var current = el;
+    while (current && current !== document.body && current !== document.documentElement) {
+      var parent = current.parentElement;
+      if (!parent) break;
+      var parentDisplay = window.getComputedStyle(parent).display;
+      if (parentDisplay.indexOf('flex') !== -1 || parentDisplay.indexOf('grid') !== -1) {
+        // Count visible siblings of current in this flex/grid parent
+        var siblings = parent.children;
+        var visibleCount = 0;
+        for (var i = 0; i < siblings.length; i++) {
+          if (siblings[i].nodeType === 1) {
+            var sDisplay = window.getComputedStyle(siblings[i]).display;
+            if (sDisplay !== 'none') visibleCount++;
+          }
+          if (visibleCount > 1) return true;
+        }
       }
-      if (visibleCount > 1) return true;
+      current = parent;
     }
     return false;
+  }
+
+  /**
+   * Return the outer height of an element (border-box height + margins).
+   */
+  function getOuterHeight(el) {
+    var rect = el.getBoundingClientRect();
+    return rect.height;
+  }
+
+  /**
+   * Return true if an element has a scrollable overflow style on the X axis
+   * (i.e. `overflow[-x]: auto | scroll`).  Such an element will grow a
+   * horizontal scrollbar if a child is wider than it — so the breakout must
+   * be applied to *this* element rather than to a child inside it.
+   */
+  function hasScrollbarOverflow(el) {
+    var cs = window.getComputedStyle(el);
+    var ox = cs.overflowX !== 'visible' ? cs.overflowX : cs.overflow;
+    return ox === 'auto' || ox === 'scroll';
   }
 
   /**
@@ -255,21 +278,39 @@
    * Returns an array of elements that were modified (used by the resize
    * handler to reapply).
    */
-  function walkAndStretch(startEl) {
+  function walkAndStretch(startEl, adHeight) {
     var modified = [];
     var el = startEl;
     var prevEl = null;
 
-    while (el && el !== document.body && el !== document.documentElement) {
-      var cs = window.getComputedStyle(el);
-
-      // Stop if this element is part of a multi-column layout (flex/grid
-      // with siblings). Stretching further would break the page structure.
-      if (isMultiColumnChild(el)) {
+    // If the ad sits anywhere inside a multi-column (flex/grid) layout,
+    // only apply width:100% up the chain — no pixel-based breakout.
+    if (isMultiColumnChild(startEl)) {
+      while (el && el !== document.body && el !== document.documentElement) {
         el.style.width = '100%';
         el.style.maxWidth = 'none';
         el.style.boxSizing = 'border-box';
         modified.push({ el: el, role: 'stretch' });
+        el = el.parentElement;
+      }
+      return modified;
+    }
+
+    while (el && el !== document.body && el !== document.documentElement) {
+      var cs = window.getComputedStyle(el);
+
+      // Stop if this element is taller than the ad — it likely contains
+      // other content and stretching it would break the page layout.
+      if (adHeight > 0 && getOuterHeight(el) > adHeight + FULL_WIDTH_TOLERANCE) {
+        if (prevEl) {
+          applyBreakout(prevEl);
+          for (var m = 0; m < modified.length; m++) {
+            if (modified[m].el === prevEl) {
+              modified[m].role = 'breakout';
+              break;
+            }
+          }
+        }
         break;
       }
 
@@ -284,15 +325,22 @@
 
       if (isFullWidth(el)) {
         // This element is already full width.
-        // Apply the breakout to the previous element (one level inward)
-        // so we don't distort this full-width structural element.
+        // Normally the breakout targets the previous (inner) element.
+        // Exception: if el has scrollable overflow (auto/scroll) a breakout
+        // on prevEl would make el grow a horizontal scrollbar — move one
+        // parent higher and break out el itself instead.
         if (prevEl) {
-          applyBreakout(prevEl);
-          // Update its role in modified list
-          for (var m = 0; m < modified.length; m++) {
-            if (modified[m].el === prevEl) {
-              modified[m].role = 'breakout';
-              break;
+          if (hasScrollbarOverflow(el)) {
+            applyBreakout(el);
+            modified.push({ el: el, role: 'breakout' });
+          } else {
+            applyBreakout(prevEl);
+            // Update its role in modified list
+            for (var m = 0; m < modified.length; m++) {
+              if (modified[m].el === prevEl) {
+                modified[m].role = 'breakout';
+                break;
+              }
             }
           }
         }
@@ -307,13 +355,22 @@
         || isFullWidth(parent)) {
 
         if (prevEl) {
-          // Apply breakout to the previous (inner) element, not this one.
-          // This element just gets 100% so the page layout stays intact.
-          applyBreakout(prevEl);
-          for (var m = 0; m < modified.length; m++) {
-            if (modified[m].el === prevEl) {
-              modified[m].role = 'breakout';
-              break;
+          // Normally apply breakout to the previous (inner) element.
+          // Exception: if el has scrollable overflow (auto/scroll) the
+          // breakout on prevEl would give el a horizontal scrollbar — move
+          // one parent higher and break out el itself instead.
+          // (The height check is already guaranteed to have passed for el
+          //  since it runs earlier in the loop — this stays within bounds.)
+          if (hasScrollbarOverflow(el)) {
+            applyBreakout(el);
+            modified.push({ el: el, role: 'breakout' });
+          } else {
+            applyBreakout(prevEl);
+            for (var m = 0; m < modified.length; m++) {
+              if (modified[m].el === prevEl) {
+                modified[m].role = 'breakout';
+                break;
+              }
             }
           }
         } else {
@@ -378,7 +435,7 @@
     container.style.maxWidth = 'none';
 
     // 3. Walk up the DOM — stretch intermediates, breakout at the edge
-    var modified = walkAndStretch(container);
+    var modified = walkAndStretch(container, height);
 
     // 4. Recalculate on viewport resize (throttled)
     var resizeTimer;

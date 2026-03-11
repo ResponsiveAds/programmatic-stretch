@@ -105,7 +105,7 @@ test.describe('Nested parent containers', () => {
 
     // Intermediate containers should have been widened
     const adWrapperWidth = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="ad-wrapper"]');
+      const el = document.querySelector('[id="ad-slot"]');
       return el ? el.getBoundingClientRect().width : 0;
     });
     const vpWidth = await page.evaluate(() => document.documentElement.clientWidth);
