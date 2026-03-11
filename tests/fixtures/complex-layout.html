@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Complex Page Layout</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f9fa; line-height: 1.6; color: #2d3436; }
+
+    header {
+      background: linear-gradient(135deg, #0c0c1d, #1a1a3e);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 22px; }
+
+    nav {
+      background: #16213e;
+      padding: 0 24px;
+      display: flex;
+      gap: 0;
+      border-bottom: 3px solid #6c5ce7;
+    }
+    nav a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 12px 16px;
+    }
+
+    .hero {
+      background: #fff;
+      padding: 30px 24px;
+      text-align: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .hero h2 { font-size: 28px; margin-bottom: 8px; }
+    .hero p { color: #555; }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 30px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 36px;
+    }
+
+    main {
+      flex: 2;
+      min-width: 300px;
+    }
+
+    aside {
+      flex: 1;
+      min-width: 260px;
+      max-width: 320px;
+    }
+
+    .article { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e8e8e8; }
+    .article h3 { font-size: 17px; margin-bottom: 6px; color: #1a1a2e; }
+    .article p { font-size: 14px; color: #636e72; }
+
+    .ad-container {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+      margin: 25px 0;
+    }
+
+    .sidebar-section {
+      background: #fff;
+      padding: 18px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: 1px solid #e8e8e8;
+    }
+    .sidebar-section h4 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid #6c5ce7;
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+    }
+    .sidebar-section ul { list-style: none; }
+    .sidebar-section li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #555; }
+    .sidebar-section li:last-child { border-bottom: none; }
+
+    footer {
+      background: linear-gradient(135deg, #0c0c1d, #1a1a3e);
+      color: #888;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <header data-testid="header">
+    <h1>Complex Layout Test</h1>
+    <span>Prebid Stretch</span>
+  </header>
+
+  <nav data-testid="nav">
+    <a href="#">Home</a>
+    <a href="#">Technology</a>
+    <a href="#">Business</a>
+    <a href="#">Opinion</a>
+  </nav>
+
+  <div class="hero" data-testid="hero">
+    <h2>Featured Story Headline</h2>
+    <p>This is a hero section that sits above the main content grid.</p>
+  </div>
+
+  <div class="container" data-testid="container">
+    <main data-testid="main-content">
+      <div class="article">
+        <h3>Article Before Ad</h3>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+      </div>
+
+      <div class="ad-container" data-testid="ad-container">
+        <div id="ad-slot">
+          <iframe
+            id="ad-iframe"
+            width="300"
+            height="250"
+            style="border:none; display:block;"
+            srcdoc="
+              <html>
+              <body style='margin:0;background:#fdcb6e;display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#333;'>
+                <div>Ad Creative 300×250 (Complex)</div>
+                <script>
+                  window.addEventListener('load', function() {
+                    var msg = JSON.stringify({
+                      message: 'Prebid Creative',
+                      adId: 'test-ad-complex-1',
+                      action: 'programmaticStretch',
+                      height: 250
+                    });
+                    window.top.postMessage(msg, '*');
+                  });
+                </script>
+              </body>
+              </html>
+            "
+          ></iframe>
+        </div>
+      </div>
+
+      <div class="article">
+        <h3>Article After Ad</h3>
+        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.</p>
+      </div>
+
+      <div class="article">
+        <h3>Another Article</h3>
+        <p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.</p>
+      </div>
+    </main>
+
+    <aside data-testid="sidebar">
+      <div class="sidebar-section">
+        <h4>Trending</h4>
+        <ul>
+          <li>Story One</li>
+          <li>Story Two</li>
+          <li>Story Three</li>
+          <li>Story Four</li>
+        </ul>
+      </div>
+      <div class="sidebar-section">
+        <h4>Newsletter</h4>
+        <p style="font-size:14px;color:#555;">Subscribe to our daily newsletter for updates.</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer data-testid="footer">Footer — &copy; 2026 Complex Layout Test</footer>
+  <script src="../../programmaticStretch.js"></script>
+</body>
+</html>

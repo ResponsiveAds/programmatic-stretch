@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "serve": "npx serve -l 3000 ."
+    "serve": "npx serve -l 3000 .",
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }

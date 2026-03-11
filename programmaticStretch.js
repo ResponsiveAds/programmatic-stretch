@@ -186,32 +186,208 @@
     return null;
   }
 
+  /** Tolerance in px — an element within this of viewport width is "full width". */
+  var FULL_WIDTH_TOLERANCE = 2;
+
   /**
-   * Default resize: set width to 100 % and height to the resolved value
-   * on both the iframe and its immediate parent element — identical to
+   * Check whether an element already spans the full viewport width.
    */
-  function defaultResize(iframe, width, height) {
-    var widthCSS = getDimension(width);
-    var heightCSS = getDimension(height);
+  function isFullWidth(el) {
+    var vpWidth = document.documentElement.clientWidth;
+    var rect = el.getBoundingClientRect();
+    return (Math.abs(rect.width - vpWidth) <= FULL_WIDTH_TOLERANCE)
+      && (Math.abs(rect.left) <= FULL_WIDTH_TOLERANCE);
+  }
 
-    [iframe, iframe.parentElement].forEach(function (el) {
-      if (el && el.style) {
-        el.style.width = widthCSS;
-        el.style.height = heightCSS;
+  /**
+   * Check whether an element is a flex/grid child with visible siblings,
+   * meaning it's part of a multi-column layout that should not be broken.
+   */
+  function isMultiColumnChild(el) {
+    var parent = el.parentElement;
+    if (!parent) return false;
+    var parentDisplay = window.getComputedStyle(parent).display;
+    if (parentDisplay.indexOf('flex') === -1 && parentDisplay.indexOf('grid') === -1) {
+      return false;
+    }
+    // Count visible siblings (elements that contribute to the layout)
+    var siblings = parent.children;
+    var visibleCount = 0;
+    for (var i = 0; i < siblings.length; i++) {
+      var s = siblings[i];
+      if (s.nodeType === 1) {
+        var sDisplay = window.getComputedStyle(s).display;
+        if (sDisplay !== 'none') visibleCount++;
       }
-    });
+      if (visibleCount > 1) return true;
+    }
+    return false;
+  }
 
-    // Also update iframe element attributes (GPT may use these).
-    if (iframe) {
-      if (width) {
-        iframe.width = width;
-      } else {
-        iframe.width = '100%';
+  /**
+   * Apply the breakout to a single element so it spans the full visible
+   * viewport width.  Uses `document.documentElement.clientWidth` which
+   * excludes any vertical scrollbar, avoiding horizontal overflow.
+   */
+  function applyBreakout(el) {
+    var vpWidth = document.documentElement.clientWidth;
+    el.style.maxWidth = 'none';
+    el.style.boxSizing = 'border-box';
+    // Reset margin before measuring so getBoundingClientRect is accurate
+    el.style.marginLeft = '0';
+    el.style.width = vpWidth + 'px';
+    var left = el.getBoundingClientRect().left;
+    el.style.marginLeft = (-left) + 'px';
+  }
+
+  /**
+   * Walk up the DOM from `startEl` towards `<body>`.
+   *
+   * For every ancestor that is narrower than the viewport:
+   *   – Set it to `width: 100%` and neutralise `max-width`, `padding`,
+   *     `box-sizing`, and `overflow` so it no longer constrains children.
+   *
+   * The *first* ancestor whose parent IS the full viewport width (or
+   * `<body>` / `<html>`) receives a pixel-based breakout that pins it
+   * to the left edge of the viewport at the exact `clientWidth`
+   * (which excludes the scrollbar, preventing horizontal overflow).
+   *
+   * Returns an array of elements that were modified (used by the resize
+   * handler to reapply).
+   */
+  function walkAndStretch(startEl) {
+    var modified = [];
+    var el = startEl;
+    var prevEl = null;
+
+    while (el && el !== document.body && el !== document.documentElement) {
+      var cs = window.getComputedStyle(el);
+
+      // Stop if this element is part of a multi-column layout (flex/grid
+      // with siblings). Stretching further would break the page structure.
+      if (isMultiColumnChild(el)) {
+        el.style.width = '100%';
+        el.style.maxWidth = 'none';
+        el.style.boxSizing = 'border-box';
+        modified.push({ el: el, role: 'stretch' });
+        break;
       }
-      if (height) {
-        iframe.height = height;
+
+      // Fix overflow that would clip the breakout
+      if (cs.overflow === 'hidden' || cs.overflowX === 'hidden') {
+        el.style.overflowX = 'visible';
+      }
+      // Fix CSS containment
+      if (cs.contain && cs.contain !== 'none') {
+        el.style.contain = 'none';
+      }
+
+      if (isFullWidth(el)) {
+        // This element is already full width.
+        // Apply the breakout to the previous element (one level inward)
+        // so we don't distort this full-width structural element.
+        if (prevEl) {
+          applyBreakout(prevEl);
+          // Update its role in modified list
+          for (var m = 0; m < modified.length; m++) {
+            if (modified[m].el === prevEl) {
+              modified[m].role = 'breakout';
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      // Check if the *parent* is full-width (or is body/html).
+      var parent = el.parentElement;
+      if (!parent
+        || parent === document.body
+        || parent === document.documentElement
+        || isFullWidth(parent)) {
+
+        if (prevEl) {
+          // Apply breakout to the previous (inner) element, not this one.
+          // This element just gets 100% so the page layout stays intact.
+          applyBreakout(prevEl);
+          for (var m = 0; m < modified.length; m++) {
+            if (modified[m].el === prevEl) {
+              modified[m].role = 'breakout';
+              break;
+            }
+          }
+        } else {
+          // Only one constraining element — apply breakout directly.
+          applyBreakout(el);
+          modified.push({ el: el, role: 'breakout' });
+        }
+        break;
+      }
+
+      // Intermediate ancestor — make it fill its parent for now
+      el.style.width = '100%';
+      el.style.maxWidth = 'none';
+      el.style.boxSizing = 'border-box';
+      el.style.margin = '0';
+      el.style.padding = '0';
+      modified.push({ el: el, role: 'stretch' });
+
+      prevEl = el;
+      el = parent;
+    }
+
+    return modified;
+  }
+
+  /**
+   * Re-apply the breakout after a viewport resize.
+   * Stretched (100%) elements stay fine, but the breakout element
+   * needs its width and margin recalculated for the new viewport.
+   */
+  function reapplyBreakout(modified) {
+    for (var i = 0; i < modified.length; i++) {
+      var entry = modified[i];
+      if (entry.role === 'breakout') {
+        applyBreakout(entry.el);
       }
     }
+  }
+
+  /**
+   * Default resize: walks up the DOM from the iframe making every
+   * constraining ancestor 100 % wide, then applies a pixel-based
+   * breakout on the outermost constraining wrapper so the ad spans
+   * the full visible viewport (excluding any scrollbar).
+   */
+  function defaultResize(iframe, width, height) {
+    var heightCSS = getDimension(height);
+
+    // 1. Size the iframe to fill its container
+    iframe.style.width = '100%';
+    iframe.style.height = heightCSS;
+    iframe.width = '100%';
+    if (height) {
+      iframe.height = height;
+    }
+
+    // 2. Size the immediate container
+    var container = iframe.parentElement;
+    if (!container || container === document.body) return;
+    container.style.width = '100%';
+    container.style.height = heightCSS;
+    container.style.maxWidth = 'none';
+
+    // 3. Walk up the DOM — stretch intermediates, breakout at the edge
+    var modified = walkAndStretch(container);
+
+    // 4. Recalculate on viewport resize (throttled)
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        reapplyBreakout(modified);
+      }, 100);
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────────

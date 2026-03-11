@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Nested Parent Containers — Safe Frame</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f9fa; }
+    header { background: #1a1a2e; color: #fff; padding: 16px 24px; }
+    .page-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 30px 24px;
+      background: #fff;
+    }
+    .content-area {
+      max-width: 800px;
+      padding: 20px;
+    }
+    .ad-wrapper {
+      max-width: 728px;
+      margin: 20px 0;
+      padding: 10px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+    }
+    .content-area p { margin-bottom: 16px; color: #333; }
+    footer { background: #1a1a2e; color: #888; padding: 16px 24px; text-align: center; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <header data-testid="header"><h1>Test Page — Nested Parents + Safe Frame</h1></header>
+
+  <div class="page-wrapper" data-testid="page-wrapper">
+    <div class="content-area" data-testid="content-area">
+      <p>Content before ad slot.</p>
+
+      <div class="ad-wrapper" data-testid="ad-wrapper">
+        <div id="ad-slot">
+          <iframe
+            id="ad-iframe"
+            width="300"
+            height="250"
+            sandbox="allow-scripts"
+            style="border:none; display:block;"
+            srcdoc="
+              <html>
+              <body style='margin:0;background:#dcedc1;display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#333;'>
+                <div>Safe Frame Ad 300×250 (Nested)</div>
+                <script>
+                  window.addEventListener('load', function() {
+                    var msg = JSON.stringify({
+                      message: 'Prebid Creative',
+                      adId: 'test-ad-nested-sf-1',
+                      action: 'programmaticStretch',
+                      height: 250
+                    });
+                    window.top.postMessage(msg, '*');
+                  });
+                </script>
+              </body>
+              </html>
+            "
+          ></iframe>
+        </div>
+      </div>
+
+      <p>Content after ad slot.</p>
+    </div>
+  </div>
+
+  <footer data-testid="footer">Footer content</footer>
+  <script src="../../programmaticStretch.js"></script>
+</body>
+</html>

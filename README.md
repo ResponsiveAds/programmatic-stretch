@@ -20,27 +20,107 @@ npm run serve
 
 Then open [http://localhost:3000/example.html](http://localhost:3000/example.html) in your browser.
 
-## Message Format
+## Running Tests
 
-The creative inside the iframe sends a `postMessage` with the following structure:
+The test suite uses [Playwright](https://playwright.dev/). A local server is started automatically by the Playwright config, so you don't need to run one manually.
+
+```bash
+# Install browsers (first time only)
+npx playwright install
+
+# Run all tests
+npm test
+
+# Run in headed mode (opens a browser window)
+npx playwright test --headed
+```
+
+## Triggering the Expansion from a Creative Iframe
+
+The creative inside the iframe must post a JSON `postMessage` to the top window with the following structure:
 
 ```json
 {
   "message": "Prebid Creative",
   "adId": "<ad-id>",
   "action": "programmaticStretch",
-  "height": 250
+  "height": 250,
+  "adUnitCode": "div-gpt-ad-123"
 }
 ```
 
-| Field     | Type   | Required | Description                          |
-| --------- | ------ | -------- | ------------------------------------ |
-| `message` | string | yes      | Must be `"Prebid Creative"`         |
-| `adId`    | string | yes      | The ad identifier                    |
-| `action`  | string | yes      | Must be `"programmaticStretch"`     |
-| `height`  | number | no       | Override height in pixels            |
+| Field        | Type   | Required | Description                                          |
+| ------------ | ------ | -------- | ---------------------------------------------------- |
+| `message`    | string | yes      | Must be `"Prebid Creative"`                         |
+| `adId`       | string | no       | The ad identifier — used for GPT targeting lookup    |
+| `action`     | string | yes      | Must be `"programmaticStretch"`                     |
+| `height`     | number | no       | Override height in pixels                            |
+| `adUnitCode` | string | no       | The slot div id — helps locate the iframe and match per-slot config |
 
-## Publisher Integration
+### Identifying the slot
+
+There are three ways the script can find the ad iframe. You can combine them for maximum reliability.
+
+#### 1. `event.source` (automatic)
+
+The script always compares `event.source` against every iframe's `contentWindow`. This works without any extra fields as long as the creative posts from within the iframe — no `adId` or `adUnitCode` needed.
+
+```js
+// Minimal — relies on event.source matching
+window.top.postMessage(JSON.stringify({
+  message: 'Prebid Creative',
+  action: 'programmaticStretch',
+  height: 250
+}), '*');
+```
+
+#### 2. `adId` (GPT targeting lookup)
+
+When `adId` is provided the script searches Google Publisher Tag slots for a targeting value that matches. Useful when GPT is on the page and the creative knows its Prebid ad ID.
+
+```js
+const adId =
+  window?.parent?.ucTagData?.targetingMap?.hb_adid?.[0] || 'fooId';
+
+window.top.postMessage(JSON.stringify({
+  message: 'Prebid Creative',
+  adId: adId,
+  action: 'programmaticStretch',
+  height: 250
+}), '*');
+```
+
+#### 3. `adUnitCode` (APNTag / direct DOM lookup + per-slot config)
+
+When `adUnitCode` is provided the script queries `window.apntag` and falls back to `document.getElementById`. It also uses this value to match publisher per-slot configuration (`slots[adUnitCode]`).
+
+```js
+window.top.postMessage(JSON.stringify({
+  message: 'Prebid Creative',
+  action: 'programmaticStretch',
+  adUnitCode: 'div-gpt-ad-123',
+  height: 250
+}), '*');
+```
+
+#### Combining fields
+
+For the best coverage, include both `adId` and `adUnitCode`. The script tries each strategy in order (`event.source` → GPT → APNTag → DOM id) and uses the first match.
+
+```js
+const adId =
+  window?.parent?.ucTagData?.targetingMap?.hb_adid?.[0] || 'fooId';
+
+window.top.postMessage(JSON.stringify({
+  message: 'Prebid Creative',
+  adId: adId,
+  adUnitCode: 'div-gpt-ad-123',
+  action: 'programmaticStretch',
+  height: 250
+}), '*');
+```
+
+> **Note:** If `adUnitCode` is not provided in the message the script will attempt to guess it by walking up the DOM from the matched iframe and using the first ancestor with an `id` attribute. This guessed value is then used for per-slot config lookup.
 
 ### 1. Add the script to the page
 
@@ -109,35 +189,25 @@ Height is resolved with the following priority:
 2. Height sent in the `postMessage` payload (`data.height`)
 3. The iframe's computed height (via `getComputedStyle`)
 
-## Triggering the Expansion from a Creative Iframe
-
-Add the following snippet inside your creative to trigger the stretch:
-
-```js
-const adId =
-  window?.parent?.ucTagData?.targetingMap?.hb_adid[0] || 'fooId';
-
-const message = {
-  message: 'Prebid Creative',
-  adId: adId,
-  action: 'programmaticStretch',
-};
-
-const stringMessage = JSON.stringify(message);
-window.top.postMessage(stringMessage, '*');
-```
-
-The code reads the Prebid ad ID from the `ucTagData` object (falling back to a placeholder) and posts the required `programmaticStretch` message to the top window, which the publisher-side script picks up to resize the slot.
-
 ## Iframe Lookup Strategies
 
 The script locates the ad iframe using multiple strategies in order:
 
 1. **`event.source` matching** — compares against every iframe's `contentWindow`
 2. **GPT slot lookup** — searches Google Publisher Tag targeting for the `adId`
-3. ** AST lookup** — queries `window.apntag` by `adUnitCode`
+3. **APNTag lookup** — queries `window.apntag` by `adUnitCode`
 4. **Direct DOM lookup** — uses `adUnitCode` as a DOM element id
 
 ## Default Resize Behaviour
 
-When no custom `resizeFunction` is configured, the script sets width to `100%` and height to the resolved value on both the iframe and its immediate parent element, and updates iframe element attributes.
+When no custom `resizeFunction` is configured the script performs a multi-step resize:
+
+1. **Iframe** — sets `width: 100%` and the resolved height via both CSS (`style.width`, `style.height`) and HTML attributes (`iframe.width`, `iframe.height`).
+2. **Immediate parent** — sets `width: 100%`, `height`, and `max-width: none`.
+3. **DOM walk (`walkAndStretch`)** — walks up from the parent towards `<body>`, widening every constraining ancestor:
+   - Intermediate ancestors get `width: 100%; max-width: none; margin: 0; padding: 0`.
+   - `overflow: hidden` / `overflow-x: hidden` is relaxed to `visible` so the breakout isn't clipped.
+   - CSS `contain` is reset to `none` where present.
+   - **Multi-column protection** — if an ancestor is a flex/grid child with visible siblings the walk stops there (the element is stretched to 100 % of its column but no further) to avoid breaking multi-column layouts.
+4. **Breakout** — the outermost constraining element receives a pixel-based breakout: its width is set to `document.documentElement.clientWidth` and a negative `margin-left` pins it to the viewport edge. Using `clientWidth` (which excludes the vertical scrollbar) prevents horizontal overflow.
+5. **Viewport resize** — a throttled (100 ms) `resize` listener recalculates the breakout so the ad stays full-width after the window is resized.

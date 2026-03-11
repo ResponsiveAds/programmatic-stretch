@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Simple Single Parent — Safe Frame</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f9fa; }
+    header { background: #1a1a2e; color: #fff; padding: 16px 24px; }
+    .content { max-width: 800px; margin: 24px auto; padding: 0 24px; }
+    .content p { margin-bottom: 16px; color: #333; }
+    footer { background: #1a1a2e; color: #888; padding: 16px 24px; text-align: center; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <header data-testid="header"><h1>Test Page — Simple Safe Frame</h1></header>
+
+  <div class="content" data-testid="main-content">
+    <p>Content before ad slot.</p>
+
+    <div id="ad-slot">
+      <iframe
+        id="ad-iframe"
+        width="300"
+        height="250"
+        sandbox="allow-scripts"
+        style="border:none; display:block;"
+        srcdoc="
+          <html>
+          <body style='margin:0;background:#a8e6cf;display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#333;'>
+            <div>Safe Frame Ad 300×250</div>
+            <script>
+              window.addEventListener('load', function() {
+                var msg = JSON.stringify({
+                  message: 'Prebid Creative',
+                  adId: 'test-ad-sf-1',
+                  action: 'programmaticStretch',
+                  height: 250
+                });
+                window.top.postMessage(msg, '*');
+              });
+            </script>
+          </body>
+          </html>
+        "
+      ></iframe>
+    </div>
+
+    <p>Content after ad slot.</p>
+  </div>
+
+  <footer data-testid="footer">Footer content</footer>
+  <script src="../../programmaticStretch.js"></script>
+</body>
+</html>
