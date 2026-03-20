@@ -16,6 +16,7 @@
   // ──────────────────────────────────────────────────────────────────────
   var MESSAGE_CREATIVE = 'Prebid Creative';
   var ACTION_PROGRAMMATIC_STRETCH = 'programmaticStretch';
+  var VERSION = '__VERSION__';
 
   // ──────────────────────────────────────────────────────────────────────
   // Configuration helpers
@@ -652,6 +653,9 @@
   // ──────────────────────────────────────────────────────────────────────
   // Bootstrap
   // ──────────────────────────────────────────────────────────────────────
+
+  window.programmaticStretch = window.programmaticStretch || {};
+  window.programmaticStretch.version = VERSION;
 
   window.addEventListener('message', onMessage, false);
 

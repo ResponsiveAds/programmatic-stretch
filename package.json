@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "serve": "npx serve -l 3000 .",
-    "test": "npx playwright test"
+    "test": "npx playwright test",
+    "build": "node build.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.58.2",
+    "terser": "^5.39.0"
   }
 }

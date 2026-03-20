@@ -18,7 +18,17 @@ Start a local server to test the example page:
 npm run serve
 ```
 
-Then open [http://localhost:3000/example.html](http://localhost:3000/example.html) in your browser.
+Then open [http://localhost:3000/example.html](http://localhost:3000/example.html) in your browser. Or you can view the page here: [https://responsiveads.github.io/programmatic-stretch/example.html](https://responsiveads.github.io/programmatic-stretch/example.html)
+
+## Build Minified Bundle
+
+Create a minified artifact with the package version injected into the runtime script:
+
+```bash
+npm run build
+```
+
+This writes the output to `dest/programmaticStretch.min.js`.
 
 ## Running Tests
 
