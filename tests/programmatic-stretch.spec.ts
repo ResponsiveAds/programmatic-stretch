@@ -176,6 +176,22 @@ test.describe('Complex page layout', () => {
     expect(mainRect).not.toBeNull();
     expect(mainRect!.x).toBeGreaterThanOrEqual(0);
 
+    // Multi-column safety: structural wrappers should not be force-styled.
+    const structuralInlineStyles = await page.evaluate(() => {
+      var main = document.querySelector('[data-testid="main-content"]') as HTMLElement | null;
+      var container = document.querySelector('[data-testid="container"]') as HTMLElement | null;
+      return {
+        mainWidth: main ? main.style.width : '',
+        mainMaxWidth: main ? main.style.maxWidth : '',
+        containerWidth: container ? container.style.width : '',
+        containerMaxWidth: container ? container.style.maxWidth : ''
+      };
+    });
+    expect(structuralInlineStyles.mainWidth).toBe('');
+    expect(structuralInlineStyles.mainMaxWidth).toBe('');
+    expect(structuralInlineStyles.containerWidth).toBe('');
+    expect(structuralInlineStyles.containerMaxWidth).toBe('');
+
     await assertNoOverflow(page);
     expect(errors.filter((e) => !e.includes('[ProgrammaticStretch]'))).toEqual([]);
   });

@@ -188,6 +188,8 @@
 
   /** Tolerance in px — an element within this of viewport width is "full width". */
   var FULL_WIDTH_TOLERANCE = 2;
+  var COLUMN_ALIGNMENT_TOLERANCE = 8;
+  var MAX_MULTI_COLUMN_STRETCH_DEPTH = 3;
 
   /**
    * Check whether an element already spans the full viewport width.
@@ -200,31 +202,112 @@
   }
 
   /**
-   * Check whether an element (or any of its ancestors) is a flex/grid child
-   * with visible siblings, meaning it sits inside a multi-column layout that
-   * should not be broken out of.
+   * Return true when a container has at least two child elements that are
+   * visually side-by-side (same row, different x positions).
+   */
+  function hasSideBySideChildren(parent) {
+    var siblings = parent.children;
+    var boxes = [];
+    for (var i = 0; i < siblings.length; i++) {
+      if (siblings[i].nodeType !== 1) continue;
+      var sStyle = window.getComputedStyle(siblings[i]);
+      if (sStyle.display === 'none' || sStyle.visibility === 'hidden') continue;
+      var rect = siblings[i].getBoundingClientRect();
+      if (rect.width <= FULL_WIDTH_TOLERANCE || rect.height <= FULL_WIDTH_TOLERANCE) continue;
+      boxes.push(rect);
+    }
+
+    if (boxes.length < 2) return false;
+
+    for (var a = 0; a < boxes.length; a++) {
+      for (var b = a + 1; b < boxes.length; b++) {
+        var rectA = boxes[a];
+        var rectB = boxes[b];
+        var verticalOverlap = Math.min(rectA.bottom, rectB.bottom) - Math.max(rectA.top, rectB.top);
+        var sameRow = Math.abs(rectA.top - rectB.top) <= COLUMN_ALIGNMENT_TOLERANCE || verticalOverlap > COLUMN_ALIGNMENT_TOLERANCE;
+        var differentColumns = Math.abs(rectA.left - rectB.left) > FULL_WIDTH_TOLERANCE;
+        if (sameRow && differentColumns) return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check whether an element (or any of its ancestors) sits inside a
+   * multi-column area that should not be broken out of.
    */
   function isMultiColumnChild(el) {
     var current = el;
     while (current && current !== document.body && current !== document.documentElement) {
       var parent = current.parentElement;
       if (!parent) break;
-      var parentDisplay = window.getComputedStyle(parent).display;
-      if (parentDisplay.indexOf('flex') !== -1 || parentDisplay.indexOf('grid') !== -1) {
-        // Count visible siblings of current in this flex/grid parent
-        var siblings = parent.children;
-        var visibleCount = 0;
-        for (var i = 0; i < siblings.length; i++) {
-          if (siblings[i].nodeType === 1) {
-            var sDisplay = window.getComputedStyle(siblings[i]).display;
-            if (sDisplay !== 'none') visibleCount++;
-          }
-          if (visibleCount > 1) return true;
-        }
+
+      var parentStyle = window.getComputedStyle(parent);
+      var display = parentStyle.display;
+      var isFlex = display.indexOf('flex') !== -1;
+      var isGrid = display.indexOf('grid') !== -1;
+      var isColumnFlow = parentStyle.columnCount !== 'auto' && parseInt(parentStyle.columnCount, 10) > 1;
+
+      // For flex containers, only row/row-reverse indicates column layout.
+      if (isFlex && parentStyle.flexDirection.indexOf('column') !== -1) {
+        isFlex = false;
       }
+
+      var hasColumns = hasSideBySideChildren(parent);
+      if ((isFlex || isGrid || isColumnFlow || hasColumns) && hasColumns) {
+        return true;
+      }
+
       current = parent;
     }
     return false;
+  }
+
+  /**
+   * Return the number of visible, layout-relevant child elements.
+   */
+  function getVisibleMeaningfulChildCount(el) {
+    var children = el.children;
+    var count = 0;
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (child.nodeType !== 1) continue;
+      var tag = child.tagName ? child.tagName.toLowerCase() : '';
+      if (tag === 'script' || tag === 'style' || tag === 'link' || tag === 'meta') continue;
+      var cs = window.getComputedStyle(child);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      var rect = child.getBoundingClientRect();
+      if (rect.width <= FULL_WIDTH_TOLERANCE || rect.height <= FULL_WIDTH_TOLERANCE) continue;
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * Heuristic guard: allow multi-column stretch only on ad-scoped wrappers.
+   */
+  function isSafeMultiColumnStretchTarget(el, adHeight) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+
+    var tag = el.tagName ? el.tagName.toLowerCase() : '';
+    if (tag === 'main' || tag === 'section' || tag === 'article' || tag === 'aside'
+      || tag === 'header' || tag === 'footer' || tag === 'nav') {
+      return false;
+    }
+
+    var idClass = ((el.id || '') + ' ' + (el.className || '')).toLowerCase();
+    if (/\b(content|main|section|layout|container|grid|row|column|sidebar|wrapper|shell)\b/.test(idClass)) {
+      return false;
+    }
+
+    var cs = window.getComputedStyle(el);
+    if (cs.position === 'fixed' || cs.position === 'sticky' || cs.display === 'contents') return false;
+
+    if (adHeight > 0 && getOuterHeight(el) > adHeight + FULL_WIDTH_TOLERANCE) return false;
+    if (hasSideBySideChildren(el)) return false;
+
+    return getVisibleMeaningfulChildCount(el) <= 1;
   }
 
   /**
@@ -284,14 +367,22 @@
     var prevEl = null;
 
     // If the ad sits anywhere inside a multi-column (flex/grid) layout,
-    // only apply width:100% up the chain — no pixel-based breakout.
+    // only apply guarded width:100% on ad-scoped wrappers — no breakout.
     if (isMultiColumnChild(startEl)) {
+      var depth = 0;
       while (el && el !== document.body && el !== document.documentElement) {
+        if (!isSafeMultiColumnStretchTarget(el, adHeight)) break;
         el.style.width = '100%';
         el.style.maxWidth = 'none';
         el.style.boxSizing = 'border-box';
         modified.push({ el: el, role: 'stretch' });
-        el = el.parentElement;
+
+        var next = el.parentElement;
+        depth++;
+        if (!next || depth >= MAX_MULTI_COLUMN_STRETCH_DEPTH) break;
+        if (!isSafeMultiColumnStretchTarget(next, adHeight)) break;
+
+        el = next;
       }
       return modified;
     }
