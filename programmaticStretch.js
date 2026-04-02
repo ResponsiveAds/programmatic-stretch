@@ -244,6 +244,9 @@
       var parent = current.parentElement;
       if (!parent) break;
 
+      // A full-width parent means the ad can safely break out — not multi-column.
+      if (isFullWidth(parent)) return false;
+
       var parentStyle = window.getComputedStyle(parent);
       var display = parentStyle.display;
       var isFlex = display.indexOf('flex') !== -1;

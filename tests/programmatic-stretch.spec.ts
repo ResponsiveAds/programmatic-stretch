@@ -264,7 +264,29 @@ test.describe('Page with vertical scrollbar', () => {
   });
 });
 
-// ─── H. Viewport resize ────────────────────────────────────────────────────
+// ─── H. Full-width flex parent (not multi-column) ──────────────────────────
+
+test.describe('Full-width flex parent', () => {
+  test('ad stretches to full width when flex parent spans the viewport', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await page.goto('/tests/fixtures/full-width-flex-parent.html');
+    await waitForStretch(page);
+
+    const vpWidth = await page.evaluate(() => document.documentElement.clientWidth);
+
+    // Ad should be full viewport width — the full-width flex parent
+    // should not be treated as a multi-column constraint.
+    const adRect = await getRect(page, '#ad-iframe');
+    expect(adRect).not.toBeNull();
+    expect(Math.abs(adRect!.width - vpWidth)).toBeLessThanOrEqual(TOLERANCE);
+    expect(adRect!.height).toBeCloseTo(250, 0);
+
+    await assertNoOverflow(page);
+    expect(errors.filter((e) => !e.includes('[ProgrammaticStretch]'))).toEqual([]);
+  });
+});
+
+// ─── I. Viewport resize ────────────────────────────────────────────────────
 
 test.describe('Viewport resize', () => {
   test('ad stays full width after viewport resize', async ({ page }) => {

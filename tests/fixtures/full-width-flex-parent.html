@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Full-width Flex Parent — Ad Should Still Stretch</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f9fa; }
+    header { background: #1a1a2e; color: #fff; padding: 16px 24px; }
+
+    /* Full-width flex row with side-by-side children (e.g. nav bar) */
+    .full-width-flex {
+      display: flex;
+      width: 100%;
+      gap: 20px;
+      padding: 10px 20px;
+      background: #e8e8e8;
+    }
+    .full-width-flex > .nav-item {
+      padding: 8px 16px;
+      background: #ccc;
+    }
+
+    /* Constrained content area below the flex bar */
+    .content { max-width: 800px; margin: 24px auto; padding: 0 24px; }
+    .content p { margin-bottom: 16px; color: #333; }
+    footer { background: #1a1a2e; color: #888; padding: 16px 24px; text-align: center; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <header data-testid="header"><h1>Full-width Flex Parent Test</h1></header>
+
+  <!-- Full-width flex row with side-by-side items — NOT a multi-column layout that should block stretch -->
+  <div class="full-width-flex" data-testid="full-width-flex">
+    <div class="nav-item">Link A</div>
+    <div class="nav-item">Link B</div>
+    <div class="nav-item">Link C</div>
+  </div>
+
+  <div class="content" data-testid="main-content">
+    <p>Content before ad slot.</p>
+
+    <div id="ad-slot">
+      <iframe
+        id="ad-iframe"
+        width="300"
+        height="250"
+        style="border:none; display:block;"
+        srcdoc="
+          <html>
+          <body style='margin:0;background:#a8e6cf;display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#333;'>
+            <div>Ad Creative 300×250 (Full-width Flex Parent)</div>
+            <script>
+              window.addEventListener('load', function() {
+                var msg = JSON.stringify({
+                  message: 'Prebid Creative',
+                  adId: 'test-ad-fullwidth-flex',
+                  action: 'programmaticStretch',
+                  height: 250
+                });
+                window.top.postMessage(msg, '*');
+              });
+            </script>
+          </body>
+          </html>
+        "
+      ></iframe>
+    </div>
+
+    <p>Content after ad slot.</p>
+  </div>
+
+  <footer data-testid="footer">Footer content</footer>
+  <script src="../../programmaticStretch.js"></script>
+</body>
+</html>
