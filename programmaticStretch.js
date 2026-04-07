@@ -543,6 +543,39 @@
   }
 
   // ──────────────────────────────────────────────────────────────────────
+  // Response helper
+  // ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * Send a postMessage back to the creative iframe to notify it whether
+   * the expansion succeeded or failed.
+   *
+   * @param {Window}  target   - The iframe's contentWindow (ev.source).
+   * @param {boolean} success  - Whether the stretch was applied.
+   * @param {string|null} adId - The ad identifier echoed back.
+   * @param {string}  [reason] - Human-readable reason (on failure).
+   */
+  function notifyCreative(target, success, adId, reason) {
+    var cfg = getConfig();
+    if (cfg.notify === false) return;
+    if (!target || typeof target.postMessage !== 'function') return;
+    var payload = {
+      message: MESSAGE_CREATIVE,
+      action: ACTION_PROGRAMMATIC_STRETCH,
+      adId: adId || null,
+      success: success
+    };
+    if (!success && reason) {
+      payload.reason = reason;
+    }
+    try {
+      target.postMessage(JSON.stringify(payload), '*');
+    } catch (e) {
+      // Cross-origin or detached frame — ignore silently.
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
   // postMessage handler
   // ──────────────────────────────────────────────────────────────────────
 
@@ -572,6 +605,7 @@
     var cfg = getConfig();
     if (cfg.enabled === false) {
       logWarn('Received programmaticStretch message but script is globally disabled.');
+      notifyCreative(ev.source, false, adId, 'Script is globally disabled');
       return;
     }
 
@@ -579,6 +613,7 @@
     var iframe = findAdIframe(ev, adId, adUnitCode);
     if (!iframe) {
       logWarn('Received programmaticStretch message but could not locate the ad iframe (adId: ' + adId + ').');
+      notifyCreative(ev.source, false, adId, 'Could not locate ad iframe');
       return;
     }
 
@@ -621,6 +656,7 @@
     defaultResize(iframe, width, height);
 
     logInfo('programmaticStretch applied — adId: ' + adId + ', width: 100%, height: ' + (height || '100%'));
+    notifyCreative(ev.source, true, adId);
   }
 
   // ──────────────────────────────────────────────────────────────────────

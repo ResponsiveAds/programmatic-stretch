@@ -146,6 +146,10 @@ window.top.postMessage(JSON.stringify({
     // Enable / disable globally (default: true)
     enabled: true,
 
+    // Send a postMessage back to the creative iframe to confirm
+    // whether the expansion succeeded or failed (default: true).
+    notify: true,
+
     // Per-slot overrides keyed by adUnitCode (the div id of the slot).
     slots: {
       'div-gpt-ad-123': {
@@ -171,6 +175,7 @@ window.top.postMessage(JSON.stringify({
 | Property         | Type     | Default | Description                                                       |
 | ---------------- | -------- | ------- | ----------------------------------------------------------------- |
 | `enabled`        | boolean  | `true`  | Enable or disable the script globally                             |
+| `notify`         | boolean  | `true`  | Send a postMessage back to the creative confirming success/failure |
 | `resizeFunction` | function | `null`  | Global custom resize function — skips default resize when set     |
 | `slots`          | object   | `{}`    | Per-slot overrides keyed by adUnitCode (div id)                   |
 
