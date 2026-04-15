@@ -138,6 +138,13 @@ window.top.postMessage(JSON.stringify({
 <script src="programmaticStretch.js"></script>
 ```
 
+Or if you are a publisher use CDN hosted minified script. Using this URL will pin the version. If there are updates you will need to update the URL.
+```html
+<script src="https://cdn.jsdelivr.net/gh/ResponsiveAds/programmatic-stretch@v1.0.2/dest/programmaticStretch.min.js"></script>
+```
+
+
+
 ### 2. (Optional) Configure before or after the script loads
 
 ```html
