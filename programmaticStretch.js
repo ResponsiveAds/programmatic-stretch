@@ -604,9 +604,15 @@
     // ── Check global enabled flag ───────────────────────────────────
     var cfg = getConfig();
     if (cfg.enabled === false) {
-      logWarn('Received programmaticStretch message but script is globally disabled.');
-      notifyCreative(ev.source, false, adId, 'Script is globally disabled');
-      return;
+      // Before exiting, check if this specific slot has been explicitly
+      // re-enabled via slots[code].enabled = true (allowlist pattern).
+      var earlyCode = adUnitCode || adId;
+      var earlySlotCfg = getSlotConfig(earlyCode);
+      if (!earlySlotCfg || earlySlotCfg.enabled !== true) {
+        logWarn('Received programmaticStretch message but script is globally disabled.');
+        notifyCreative(ev.source, false, adId, 'Script is globally disabled');
+        return;
+      }
     }
 
     // ── Find the ad iframe ──────────────────────────────────────────
@@ -624,6 +630,13 @@
 
     // ── Per-slot config ─────────────────────────────────────────────
     var slotCfg = getSlotConfig(adUnitCode);
+
+    // ── Per-slot enabled check ──────────────────────────────────────
+    if (slotCfg && slotCfg.enabled === false) {
+      logWarn('programmaticStretch skipped — slot is disabled: ' + adUnitCode);
+      notifyCreative(ev.source, false, adId, 'Slot is disabled');
+      return;
+    }
 
     // ── Resolve height ──────────────────────────────────────────────
     var height = resolveHeight(slotCfg, data, iframe);

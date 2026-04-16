@@ -132,7 +132,7 @@ window.top.postMessage(JSON.stringify({
 
 > **Note:** If `adUnitCode` is not provided in the message the script will attempt to guess it by walking up the DOM from the matched iframe and using the first ancestor with an `id` attribute. This guessed value is then used for per-slot config lookup.
 
-### 1. Add the script to the page
+### 1. Add the script to the page - For Publishers
 
 ```html
 <script src="programmaticStretch.js"></script>
@@ -160,6 +160,11 @@ Or if you are a publisher use CDN hosted minified script. Using this URL will pi
     // Per-slot overrides keyed by adUnitCode (the div id of the slot).
     slots: {
       'div-gpt-ad-123': {
+        // Enable or disable stretch for this slot only.
+        // true  → stretch even if enabled:false globally (allowlist)
+        // false → skip this slot even if enabled:true globally (denylist)
+        enabled: true,
+
         // Fixed height in pixels (overrides any height sent by the
         // creative and the iframe's current height).
         height: 250,
@@ -190,6 +195,7 @@ Or if you are a publisher use CDN hosted minified script. Using this URL will pi
 
 | Property         | Type     | Default | Description                                                                 |
 | ---------------- | -------- | ------- | --------------------------------------------------------------------------- |
+| `enabled`        | boolean  | —       | Enable (`true`) or disable (`false`) stretch for this slot. Overrides the global `enabled` flag for this slot only. |
 | `height`         | number   | —       | Fixed height in pixels; overrides creative-sent and computed iframe height  |
 | `resizeFunction` | function | `null`  | Custom resize function for this slot; skips default resize when set         |
 
@@ -202,6 +208,40 @@ function resizeFunction(adId, height, meta) {
   // meta   — { iframe, event }
 }
 ```
+
+## Per-Slot Enabled
+
+The `enabled` flag can be set on individual slots to override the global setting.
+
+### Allowlist — stretch only specific slots
+
+Set `enabled: false` globally and opt specific slots back in:
+
+```js
+window.programmaticStretch = {
+  enabled: false,
+  slots: {
+    'div-gpt-ad-banner': { enabled: true }   // only this slot stretches
+  }
+};
+```
+
+> **Important:** For the allowlist pattern the creative must include `adUnitCode` (matching the slot div id) in its postMessage, because the per-slot check fires before the iframe is located. If `adUnitCode` is absent, `adId` is used as a fallback — so sending `adId` equal to the slot div id also works.
+
+### Denylist — stretch everything except specific slots
+
+Leave `enabled: true` (the default) and opt specific slots out:
+
+```js
+window.programmaticStretch = {
+  // enabled: true is the default, so this key can be omitted
+  slots: {
+    'div-gpt-ad-sidebar': { enabled: false }  // this slot is skipped
+  }
+};
+```
+
+The denylist pattern does not require `adUnitCode` in the postMessage — the script locates the iframe first, then guesses the slot id from the DOM.
 
 ## Height Resolution
 

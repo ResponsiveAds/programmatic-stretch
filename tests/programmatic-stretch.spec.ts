@@ -286,6 +286,53 @@ test.describe('Full-width flex parent', () => {
   });
 });
 
+/** Assert that the given iframe has NOT been stretched to full viewport width. */
+async function assertNotStretched(page: Page, iframeSelector: string) {
+  await page.waitForTimeout(800);
+  const result = await page.evaluate((sel) => {
+    const iframe = document.querySelector(sel) as HTMLIFrameElement;
+    const rect = iframe ? iframe.getBoundingClientRect() : { width: 0 };
+    return { width: rect.width, vpWidth: document.documentElement.clientWidth };
+  }, iframeSelector);
+  expect(result.width).toBeLessThan(result.vpWidth - TOLERANCE);
+}
+
+// ─── J. Per-slot enabled — denylist ────────────────────────────────────────
+
+test.describe('Per-slot enabled — denylist', () => {
+  test('disabled slot does not stretch; non-configured slot stretches normally', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await page.goto('/tests/fixtures/per-slot-enabled-denylist.html');
+
+    // The slot with no per-slot config inherits global enabled:true and should stretch
+    await waitForStretch(page, '#ad-iframe-allowed');
+
+    // The slot with enabled:false should not stretch
+    await assertNotStretched(page, '#ad-iframe-denied');
+
+    await assertNoOverflow(page);
+    expect(errors.filter((e) => !e.includes('[ProgrammaticStretch]'))).toEqual([]);
+  });
+});
+
+// ─── K. Per-slot enabled — allowlist ───────────────────────────────────────
+
+test.describe('Per-slot enabled — allowlist', () => {
+  test('only the allowlisted slot stretches; globally-disabled slots do not', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await page.goto('/tests/fixtures/per-slot-enabled-allowlist.html');
+
+    // The slot with enabled:true overrides the global enabled:false and stretches
+    await waitForStretch(page, '#ad-iframe-allowed');
+
+    // The slot with no per-slot config is blocked by global enabled:false
+    await assertNotStretched(page, '#ad-iframe-other');
+
+    await assertNoOverflow(page);
+    expect(errors.filter((e) => !e.includes('[ProgrammaticStretch]'))).toEqual([]);
+  });
+});
+
 // ─── I. Viewport resize ────────────────────────────────────────────────────
 
 test.describe('Viewport resize', () => {

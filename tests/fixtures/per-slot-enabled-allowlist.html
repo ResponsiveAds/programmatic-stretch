@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Per-slot enabled — allowlist</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f8f9fa; }
+    .content { max-width: 800px; margin: 24px auto; padding: 0 24px; }
+    .ad-wrap { margin: 24px 0; background: #fff; border: 1px solid #ddd; padding: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="content">
+
+    <!-- This slot has enabled:true — overrides the global enabled:false, so it stretches -->
+    <div class="ad-wrap">
+      <div id="ad-slot-allowed">
+        <iframe
+          id="ad-iframe-allowed"
+          width="300"
+          height="250"
+          style="border:none;display:block;margin:0 auto;"
+          srcdoc="
+            <html><body style='margin:0;background:#a8e6cf;'>
+              <script>
+                window.addEventListener('load', function() {
+                  window.top.postMessage(JSON.stringify({
+                    message: 'Prebid Creative',
+                    adId: 'ad-slot-allowed',
+                    action: 'programmaticStretch',
+                    height: 250
+                  }), '*');
+                });
+              </script>
+            </body></html>
+          "
+        ></iframe>
+      </div>
+    </div>
+
+    <!-- This slot has no per-slot config — global enabled:false applies, so it does NOT stretch -->
+    <div class="ad-wrap">
+      <div id="ad-slot-other">
+        <iframe
+          id="ad-iframe-other"
+          width="300"
+          height="250"
+          style="border:none;display:block;margin:0 auto;"
+          srcdoc="
+            <html><body style='margin:0;background:#74b9ff;'>
+              <script>
+                window.addEventListener('load', function() {
+                  window.top.postMessage(JSON.stringify({
+                    message: 'Prebid Creative',
+                    adId: 'ad-slot-other',
+                    action: 'programmaticStretch',
+                    height: 250
+                  }), '*');
+                });
+              </script>
+            </body></html>
+          "
+        ></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    window.programmaticStretch = {
+      enabled: false,
+      slots: {
+        'ad-slot-allowed': { enabled: true }
+      }
+    };
+  </script>
+  <script src="../../programmaticStretch.js"></script>
+</body>
+</html>
