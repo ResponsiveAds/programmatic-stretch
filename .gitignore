@@ -24,3 +24,4 @@ Thumbs.db
 npm-debug.log*
 
 /test-results/
+.claude/
