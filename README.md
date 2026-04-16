@@ -226,8 +226,6 @@ window.programmaticStretch = {
 };
 ```
 
-> **Important:** For the allowlist pattern the creative must include `adUnitCode` (matching the slot div id) in its postMessage, because the per-slot check fires before the iframe is located. If `adUnitCode` is absent, `adId` is used as a fallback — so sending `adId` equal to the slot div id also works.
-
 ### Denylist — stretch everything except specific slots
 
 Leave `enabled: true` (the default) and opt specific slots out:
@@ -241,7 +239,7 @@ window.programmaticStretch = {
 };
 ```
 
-The denylist pattern does not require `adUnitCode` in the postMessage — the script locates the iframe first, then guesses the slot id from the DOM.
+> **Note:** Both patterns work even when `adUnitCode` is not included in the creative's postMessage. The script always locates the iframe first, then resolves the slot id from the DOM before applying the enabled check.
 
 ## Height Resolution
 

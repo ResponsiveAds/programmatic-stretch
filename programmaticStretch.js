@@ -601,19 +601,7 @@
     var adId = data.adId || null;
     var adUnitCode = data.adUnitCode || null;
 
-    // ── Check global enabled flag ───────────────────────────────────
     var cfg = getConfig();
-    if (cfg.enabled === false) {
-      // Before exiting, check if this specific slot has been explicitly
-      // re-enabled via slots[code].enabled = true (allowlist pattern).
-      var earlyCode = adUnitCode || adId;
-      var earlySlotCfg = getSlotConfig(earlyCode);
-      if (!earlySlotCfg || earlySlotCfg.enabled !== true) {
-        logWarn('Received programmaticStretch message but script is globally disabled.');
-        notifyCreative(ev.source, false, adId, 'Script is globally disabled');
-        return;
-      }
-    }
 
     // ── Find the ad iframe ──────────────────────────────────────────
     var iframe = findAdIframe(ev, adId, adUnitCode);
@@ -623,7 +611,9 @@
       return;
     }
 
-    // Resolve adUnitCode from the iframe if not provided
+    // Resolve adUnitCode from the iframe if not provided in the message.
+    // This must happen before the enabled check so that guessed slot ids
+    // work correctly for both allowlist and denylist patterns.
     if (!adUnitCode) {
       adUnitCode = guessAdUnitCode(iframe);
     }
@@ -631,10 +621,20 @@
     // ── Per-slot config ─────────────────────────────────────────────
     var slotCfg = getSlotConfig(adUnitCode);
 
-    // ── Per-slot enabled check ──────────────────────────────────────
-    if (slotCfg && slotCfg.enabled === false) {
-      logWarn('programmaticStretch skipped — slot is disabled: ' + adUnitCode);
-      notifyCreative(ev.source, false, adId, 'Slot is disabled');
+    // ── Enabled check (global + per-slot) ──────────────────────────
+    // Slot-level enabled overrides the global flag:
+    //   slot enabled:true  → always stretch (allowlist pattern)
+    //   slot enabled:false → always skip    (denylist pattern)
+    //   slot enabled unset → inherit global (default)
+    var slotEnabled = slotCfg ? slotCfg.enabled : undefined;
+    var effectiveEnabled = (slotEnabled === true)  ? true
+                         : (slotEnabled === false) ? false
+                         : cfg.enabled !== false;
+    if (!effectiveEnabled) {
+      var reason = (slotEnabled === false) ? 'Slot is disabled'
+                 : 'Script is globally disabled';
+      logWarn('programmaticStretch skipped — ' + reason + (adUnitCode ? ': ' + adUnitCode : ''));
+      notifyCreative(ev.source, false, adId, reason);
       return;
     }
 
