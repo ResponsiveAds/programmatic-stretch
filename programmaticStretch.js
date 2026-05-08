@@ -235,6 +235,34 @@
   }
 
   /**
+   * Return true if `el` has any visible sibling that is visually side-by-side
+   * with it inside `parent` (same row, different x position).
+   *
+   * Unlike `hasSideBySideChildren`, this checks whether the specific element
+   * is itself one of the side-by-side columns — not just whether any two
+   * children of the parent happen to be side-by-side.
+   */
+  function hasSiblingsBeside(el, parent) {
+    var elRect = el.getBoundingClientRect();
+    var siblings = parent.children;
+    for (var i = 0; i < siblings.length; i++) {
+      var sib = siblings[i];
+      if (sib === el) continue;
+      if (sib.nodeType !== 1) continue;
+      var sibStyle = window.getComputedStyle(sib);
+      if (sibStyle.display === 'none' || sibStyle.visibility === 'hidden') continue;
+      var sibRect = sib.getBoundingClientRect();
+      if (sibRect.width <= FULL_WIDTH_TOLERANCE || sibRect.height <= FULL_WIDTH_TOLERANCE) continue;
+      var verticalOverlap = Math.min(elRect.bottom, sibRect.bottom) - Math.max(elRect.top, sibRect.top);
+      var sameRow = Math.abs(elRect.top - sibRect.top) <= COLUMN_ALIGNMENT_TOLERANCE
+                 || verticalOverlap > COLUMN_ALIGNMENT_TOLERANCE;
+      var differentColumns = Math.abs(elRect.left - sibRect.left) > FULL_WIDTH_TOLERANCE;
+      if (sameRow && differentColumns) return true;
+    }
+    return false;
+  }
+
+  /**
    * Check whether an element (or any of its ancestors) sits inside a
    * multi-column area that should not be broken out of.
    */
@@ -247,21 +275,15 @@
       // A full-width parent means the ad can safely break out — not multi-column.
       if (isFullWidth(parent)) return false;
 
+      // CSS multi-column layout always constrains.
       var parentStyle = window.getComputedStyle(parent);
-      var display = parentStyle.display;
-      var isFlex = display.indexOf('flex') !== -1;
-      var isGrid = display.indexOf('grid') !== -1;
-      var isColumnFlow = parentStyle.columnCount !== 'auto' && parseInt(parentStyle.columnCount, 10) > 1;
-
-      // For flex containers, only row/row-reverse indicates column layout.
-      if (isFlex && parentStyle.flexDirection.indexOf('column') !== -1) {
-        isFlex = false;
-      }
-
-      var hasColumns = hasSideBySideChildren(parent);
-      if ((isFlex || isGrid || isColumnFlow || hasColumns) && hasColumns) {
+      if (parentStyle.columnCount !== 'auto' && parseInt(parentStyle.columnCount, 10) > 1) {
         return true;
       }
+
+      // Return true only if this element itself is one of multiple side-by-side
+      // columns — not merely if some ancestor container has side-by-side children.
+      if (hasSiblingsBeside(current, parent)) return true;
 
       current = parent;
     }
