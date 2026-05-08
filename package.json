@@ -1,6 +1,6 @@
 {
   "name": "programmatic-stretch",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "serve": "npx serve -C -l 3000 .",
