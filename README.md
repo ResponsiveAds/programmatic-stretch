@@ -140,7 +140,7 @@ window.top.postMessage(JSON.stringify({
 
 Or if you are a publisher use CDN hosted minified script. Using this URL will pin the version. If there are updates you will need to update the URL.
 ```html
-<script src="https://cdn.jsdelivr.net/gh/ResponsiveAds/programmatic-stretch@v1.0.2/dest/programmaticStretch.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ResponsiveAds/programmatic-stretch@v1.0.3/dest/programmaticStretch.min.js"></script>
 ```
 
 
@@ -258,7 +258,7 @@ The script locates the ad iframe using multiple strategies in order:
 3. **APNTag lookup** — queries `window.apntag` by `adUnitCode`
 4. **Direct DOM lookup** — uses `adUnitCode` as a DOM element id
 
-## Default Resize Behaviour
+## Default Resize Behavior
 
 When no custom `resizeFunction` is configured the script performs a multi-step resize:
 
