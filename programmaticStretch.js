@@ -367,7 +367,7 @@
     el.style.boxSizing = 'border-box';
     // Reset margin before measuring so getBoundingClientRect is accurate
     el.style.marginLeft = '0';
-    el.style.width = vpWidth + 'px';
+    el.style.setProperty('width', vpWidth + 'px', 'important');
     var left = el.getBoundingClientRect().left;
     el.style.marginLeft = (-left) + 'px';
   }
